@@ -91,7 +91,7 @@ function score(c){
   let melody=m===3?(i%2===0?[[60,1],[64,1],[67,1]]:[[62,1],[67,1],[71,1]]):COMMON[bar];
   if(c.activity==='pitch'){if(i)break;melody=(c.direction==='up'?[60,64,67]:[67,64,60]).map(n=>[n,1]);}
   if(c.soundSource==='single'&&!['candidates','chords','accompaniment','pitch'].includes(c.activity))melody=Array.from({length:m},()=>[60,1]);
-  const articulationFactor=({normal:.9,legato:1.03,staccato:.28})[c.articulation];
+  const articulationFactor=({normal:.9,legato:1,staccato:.28})[c.articulation];
   let offset=0;
   for(const [note,dur] of melody){if(activeLayer(c,'melody')&&c.activity!=='rhythm')add(c.instrument==='snare'?38:melodyNote(note,c),start+offset,dur*articulationFactor,'melody',c.instrument);offset+=dur;}
   if(activeLayer(c,'accompaniment')&&c.performance==='demo'&&c.activity!=='pitch'){
@@ -184,15 +184,19 @@ class AudioEngine {
   for(const n of SAMPLES[instrument]){const s=this.buffers[instrument+'/'+n];if(!best||Math.abs(s.midi-note)<Math.abs(best.midi-note))best=s;}
   const src=c.createBufferSource(),gain=c.createGain();src.buffer=best.buffer;src.playbackRate.value=instrument==='snare'?1:2**((note-best.midi)/12);
   // A stable portion of the sampled sound sustains a held key, rather than expiring on its own.
-  if(instrument!=='snare'&&(length===Infinity||length>best.buffer.duration/src.playbackRate.value*.85)){
+  const sustainedLegato=meta.legato&&['violin','flute','trumpet'].includes(instrument);
+  if(instrument!=='snare'&&(sustainedLegato||length===Infinity||length>best.buffer.duration/src.playbackRate.value*.85)){
    const hz=440*2**((best.midi-69)/12),a=Math.min(.5,best.buffer.duration*.28),span=Math.min(.4,best.buffer.duration*.35);src.loop=true;src.loopStart=best.loop?.start??a;src.loopEnd=best.loop?.end??(a+Math.floor(span*hz)/hz);
   }
-  const amp=volume*best.trim*.23;gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(amp,time+(['violin','flute'].includes(instrument)?.035:.006));src.connect(gain).connect(bus||this.master);
-  const v={src,gain,note,instrument,time,end:time+length,stopped:false,meta};this.voices.add(v);src.onended=()=>{this.voices.delete(v);src.disconnect();gain.disconnect();};src.start(time);
+  // Connected notes enter on the sustained portion, avoiding a fresh bow/breath attack.
+  const offset=sustainedLegato&&meta.joinIn?src.loopStart:0;
+  const attack=meta.joinIn||(['violin','flute'].includes(instrument)?.035:.006);
+  const amp=volume*best.trim*.23;gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(amp,time+attack);src.connect(gain).connect(bus||this.master);
+  const v={src,gain,note,instrument,time,end:time+length,stopped:false,meta,amp,attack};this.voices.add(v);src.onended=()=>{this.voices.delete(v);src.disconnect();gain.disconnect();};src.start(time,offset);
   if(Number.isFinite(length))this.release(v,time+Math.max(.025,length));
-  this.debug.played.push({note,instrument,time,length,volume,kind:meta.kind||'manual'});if(this.debug.played.length>1200)this.debug.played.splice(0,300);return v;
+  this.debug.played.push({note,instrument,time,length,volume,kind:meta.kind||'manual',joinIn:meta.joinIn||0,joinOut:meta.joinOut||0,offset});if(this.debug.played.length>1200)this.debug.played.splice(0,300);return v;
  }
- release(v,at=this.ctx?.currentTime){if(!v||v.stopped)return;v.stopped=true;const release=.04,now=this.ctx.currentTime,t=Math.max(at,now);v.end=t+release;const p=v.gain.gain;if(p.cancelAndHoldAtTime)p.cancelAndHoldAtTime(t);else{p.cancelScheduledValues(t);p.setValueAtTime(p.value,t)}p.linearRampToValueAtTime(0,t+release);try{v.src.stop(t+release+.005)}catch{}}
+ release(v,at=this.ctx?.currentTime){if(!v||v.stopped)return;v.stopped=true;const release=v.meta?.joinOut||.04,now=this.ctx.currentTime,t=Math.max(at,now);v.end=t+release;const p=v.gain.gain;if(p.cancelAndHoldAtTime)p.cancelAndHoldAtTime(t);else{p.cancelScheduledValues(t);p.setValueAtTime(v.amp??p.value,t)}p.linearRampToValueAtTime(0,t+release);try{v.src.stop(t+release+.005)}catch{}}
  killVoices(){if(!this.ctx)return;for(const v of this.voices){try{v.gain.gain.cancelScheduledValues(this.ctx.currentTime);v.gain.gain.setValueAtTime(0,this.ctx.currentTime);v.src.stop()}catch{}}this.voices.clear();}
  stopTransport(){this.token++;if(!this.ctx)return;for(const v of [...this.voices])if(v.meta?.kind&&v.meta.kind!=='manual'){try{v.src.stop();v.gain.disconnect()}catch{}this.voices.delete(v);}if(this.run?.bus)this.run.bus.disconnect();this.run=null;this.paused=null;this.onFrame(null);}
  stop(clearPause=true){this.token++;this.killVoices();if(this.run?.bus)this.run.bus.disconnect();this.run=null;if(clearPause)this.paused=null;this.debug.stops++;this.onFrame(null);}
@@ -209,7 +213,19 @@ class AudioEngine {
    // Short ramps follow the same beat-to-time mapping as the note schedule.
    const step=.125;for(let b=0;b<=s.totalBeats;b+=step){const t=beatTime(c,b);if(t>=from)bus.gain.linearRampToValueAtTime(dynamicAt(c,b),origin+t);}
   }
-  for(const e of s.events){const t=s.seconds?e.time:beatTime(c,e.beat),end=s.seconds?t+e.length:beatTime(c,e.beat+e.duration);if(t>=until||end<=from)continue;const start=Math.max(t,from);this.voice(e.note,e.instrument,origin+start,Math.min(end,until)-start,e.layer==='bass'?1.05:c.levels[e.layer],bus,{kind:e.layer==='accompaniment'?'demo-accompaniment':'demo',event:e});}
+  const timing=e=>({start:s.seconds?e.time:beatTime(c,e.beat),end:s.seconds?e.time+e.length:beatTime(c,e.beat+e.duration)});
+  const joins=new Map();
+  if(c.articulation==='legato'&&!s.seconds){
+   const melody=s.events.filter(e=>e.layer==='melody'&&e.instrument!=='snare');
+   for(let i=1;i<melody.length;i++){
+    const prev=melody[i-1],next=melody[i],a=timing(prev),b=timing(next);
+    if(Math.abs(a.end-b.start)>1e-6||b.start<=from||b.start>=until)continue;
+    // A time-based crossfade keeps both notes audible through the handover at any BPM.
+    const fade=Math.min(.09,(a.end-a.start)*.25,(b.end-b.start)*.25);
+    joins.set(prev,{...joins.get(prev),joinOut:fade});joins.set(next,{...joins.get(next),joinIn:fade});
+   }
+  }
+  for(const e of s.events){const {start:t,end}=timing(e);if(t>=until||end<=from)continue;const start=Math.max(t,from);this.voice(e.note,e.instrument,origin+start,Math.min(end,until)-start,e.layer==='bass'?1.05:c.levels[e.layer],bus,{kind:e.layer==='accompaniment'?'demo-accompaniment':'demo',event:e,legato:c.articulation==='legato'&&e.layer==='melody',...joins.get(e)});} 
   for(let n=0;n<count;n++)this.click(ctx.currentTime+.06+n*60/c.bpm,n===0);
   if(c.metronome||['rhythm','meter'].includes(c.activity))for(const b of s.beats){const t=s.seconds?b.time:beatTime(c,b.beat);if(t>=from&&t<until)this.click(origin+t,b.index===1,c.activity==='meter');}
   const tick=()=>{
