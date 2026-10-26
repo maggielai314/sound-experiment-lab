@@ -25,3 +25,5 @@ C 大調共同旋律、C/G/F 配置及四拍分解型取自使用者提供的 20
 
 2026-10-12 長笛更新：改用 University of Iowa Electronic Music Studios / Lawrence Fritts 錄音，演奏 Sonja Feig（April 2000），Flute.nonvib.pp。官方來源 https://theremin.music.uiowa.edu/MISflute.html ；使用條件 https://theremin.music.uiowa.edu/MIS.html （可下載並用於任何項目，無限制）。從官方 ZIP 的音階錄音抽取 C4、E4、A4、C5，轉成 PCM WAV，加 12 ms 邊界淡入淡出；沒有把其他樂器模擬成長笛。裁切位置與來源在 manifest.json。原長笛 MP3 留作開發比較，不再用於播放。
 六款樂器 SVG 圖卡為本專案原創繪製。
+
+認音鍵盤（keyboard/）：使用上述 tonejs-instruments 鋼琴採樣（CC BY 3.0）C4、D♯4、F♯4、A4、C5、D♯5、F♯5、A5、C6，裁剪至 3.2 秒並加淡出，其餘音高以最近採樣變調。
