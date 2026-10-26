@@ -79,6 +79,34 @@
   .play{border:0;background:var(--mint);font-weight:800;font-size:15px;padding:7px 14px;border-radius:999px;box-shadow:0 2px 0 var(--ink)}
   .tag{font-size:13px;font-weight:800;padding:3px 10px;border-radius:999px;background:var(--pink2)}
   svg{display:block;max-width:100%;height:auto;margin:6px 0 10px}
+  .qtop{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:10px}
+  .qprompt{font-size:clamp(18px,2.4vw,26px);font-weight:800}
+  .qprompt b{background:var(--pink2);border-radius:10px;padding:0 8px}
+  .qbtns{display:flex;flex-wrap:wrap;gap:8px}
+  .qbtns button{border:0;background:var(--card);font-weight:800;font-size:16px;padding:9px 14px;border-radius:999px;box-shadow:0 3px 0 var(--lav)}
+  .qbtns button.primary{background:var(--mint);box-shadow:0 3px 0 var(--ink)}
+  .qbtns button:disabled{opacity:.4}
+  .score{margin-left:auto;font-weight:800;background:var(--card);border-radius:14px;padding:8px 14px;box-shadow:0 3px 0 var(--pink)}
+  .score b{font-size:22px}
+  .slots{display:flex;align-items:flex-end;gap:4px;margin:4px 0 8px;flex-wrap:nowrap}
+  .slotwrap{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
+  .slot{width:100%;height:clamp(46px,7vw,64px);border-radius:12px;background:var(--card);border:3px dashed var(--lav);
+    display:flex;align-items:center;justify-content:center;font-size:clamp(17px,2.6vw,28px);font-weight:900}
+  .slot.filled{border-style:solid}
+  .slot.ok{background:#D4F5EA;border-color:#2BA57F}
+  .slot.bad{background:#FFD9E5;border-color:#E2588F}
+  .slotlab{font-size:12px;color:var(--muted);font-weight:800;margin-top:2px}
+  .gapcol{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;width:clamp(30px,4.5vw,52px);padding-bottom:22px;gap:3px}
+  .need{font-size:clamp(12px,1.6vw,16px);font-weight:900;border-radius:8px;padding:1px 6px;background:var(--lav)}
+  .need.h{background:var(--pink)}
+  .got{font-size:clamp(11px,1.4vw,14px);font-weight:900;border-radius:8px;padding:1px 5px}
+  .got.ok{color:#1E7A5E}.got.bad{color:#C2185B}
+  .qfb{min-height:52px;background:var(--card);border-radius:14px;padding:10px 14px;margin-bottom:10px;font-size:clamp(15px,1.9vw,19px);font-weight:700;line-height:1.45;box-shadow:0 3px 0 var(--lav)}
+  .qfb .ans{font-weight:900;letter-spacing:.04em}
+  .qfb button{border:0;background:var(--mint);font-weight:800;font-size:14px;padding:5px 12px;border-radius:999px;margin:4px 6px 0 0}
+  .kb .key.ans::after{content:'';position:absolute;left:18%;right:18%;bottom:3px;height:6px;border-radius:3px;background:#2BA57F}
+  .kb .black.ans::after{bottom:2px}
+  #qkb{height:min(42vh,320px)}
   .gate{position:fixed;inset:0;background:rgba(59,47,90,.55);display:flex;align-items:center;justify-content:center;z-index:9}
   .gate button{font-size:24px;font-weight:800;background:var(--mint);border:0;border-radius:999px;padding:18px 36px;box-shadow:0 5px 0 #3B2F5A}
   .gate[hidden]{display:none}
@@ -94,6 +122,7 @@
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tabKb" aria-selected="true">🎹 鍵盤</button>
     <button class="tab" role="tab" id="tabTh" aria-selected="false">全音・半音</button>
+    <button class="tab" role="tab" id="tabQz" aria-selected="false">🧩 砌音階挑戰</button>
   </div>
   <div class="readout" id="readoutBox" aria-live="polite"><span class="lbl">你彈緊</span><b id="now">—</b></div>
 </header>
@@ -118,14 +147,14 @@
 <section class="panel" id="panelTh" hidden>
   <div class="theory">
     <div class="card">
-      <h2><span class="tag">半音</span>隔籬嗰個鍵</h2>
+      <h2><span class="tag">半音 Semitone</span>隔籬嗰個鍵</h2>
       <p>由一個鍵去<b>緊貼隔籬</b>嗰個鍵（白鍵、黑鍵都計）＝半音。</p>
       <div id="exHalf"></div>
       <button class="play" data-play="60,61">▶ 聽 C → C♯</button>
     </div>
     <div class="card">
-      <h2><span class="tag">全音</span>隔多一個鍵</h2>
-      <p>中間隔住一個鍵＝全音（＝兩個半音）。</p>
+      <h2><span class="tag">全音 Tone</span>隔多一個鍵</h2>
+      <p>中間隔住一個鍵＝全音（＝兩個半音 2 semitones）。</p>
       <div id="exWhole"></div>
       <button class="play" data-play="60,62">▶ 聽 C → D</button>
     </div>
@@ -137,13 +166,28 @@
       <button class="play" data-play="71,72">▶ 聽 B → C</button>
     </div>
     <div class="card wide">
-      <h2>大調音階公式</h2>
+      <h2>大調音階公式 Major scale</h2>
       <div class="formula"><span>全</span><span>全</span><span class="h">半</span><i></i><span>全</span><span>全</span><span>全</span><span class="h">半</span></div>
+      <div class="formula" style="font-size:clamp(18px,2.4vw,26px);margin-top:-4px">T&nbsp; T&nbsp; S&nbsp;&nbsp;&nbsp; T&nbsp; T&nbsp; T&nbsp; S <small style="font-size:14px;color:#7A6E99;font-weight:700">（T = Tone 全音、S = Semitone 半音）</small></div>
       <p>由 Do 開始，跟住公式行 → 就砌到任何一個大調。而家顯示：<b id="thKey">C 大調</b>（喺「🎹 鍵盤」嗰頁轉調式，呢度會跟住變）</p>
       <div id="exScale"></div>
       <button class="play" id="playScale">▶ 聽呢個大調音階</button>
     </div>
   </div>
+</section>
+
+<section class="panel" id="panelQz" hidden>
+  <div class="qtop">
+    <div class="qprompt">砌出 <b id="qKey">D 大調</b>：由 <b id="qTonic">D</b> 開始，向上撳 8 個音</div>
+    <div class="qbtns">
+      <button id="qUndo">↶ 刪一個</button><button id="qClear">重新砌</button>
+      <button id="qCheck" class="primary">對答案</button><button id="qNext">下一題 ▸</button>
+    </div>
+    <div class="score">答啱 <b id="qScore">0</b> / <b id="qTotal">0</b> 題</div>
+  </div>
+  <div class="slots" id="qSlots"></div>
+  <div class="qfb" id="qFb"></div>
+  <div class="kb" id="qkb"><div class="whites"></div></div>
 </section>
 
 <div class="gate" id="gate"><button id="start">撳呢度開始 🎹</button></div>
@@ -294,15 +338,16 @@ function seg(onId, offId, cls){
   on.onclick = () => set(true); off.onclick = () => set(false); return set;
 }
 seg('namesOn','namesOff','hide-names')(true);
-function showTab(th){
-  document.getElementById('tabKb').setAttribute('aria-selected', !th);
-  document.getElementById('tabTh').setAttribute('aria-selected', th);
-  document.getElementById('panelKb').hidden = th; document.getElementById('panelTh').hidden = !th;
-  document.getElementById('readoutBox').style.visibility = th ? 'hidden' : '';
-  if (!th) placeBlacks();
+function showTab(which){
+  const ids = {kb:['tabKb','panelKb'], th:['tabTh','panelTh'], qz:['tabQz','panelQz']};
+  for (const k in ids){ document.getElementById(ids[k][0]).setAttribute('aria-selected', k===which); document.getElementById(ids[k][1]).hidden = k!==which; }
+  document.getElementById('readoutBox').style.visibility = which==='kb' ? '' : 'hidden';
+  if (which==='kb') placeBlacks();
+  if (which==='qz') qPlace();
 }
-document.getElementById('tabKb').onclick = () => showTab(false);
-document.getElementById('tabTh').onclick = () => showTab(true);
+document.getElementById('tabKb').onclick = () => showTab('kb');
+document.getElementById('tabTh').onclick = () => showTab('th');
+document.getElementById('tabQz').onclick = () => showTab('qz');
 
 // ---------- theory diagrams (SVG) ----------
 function miniKb({from=60, to=72, marks={}, arcs=[], labels={}}){
@@ -353,6 +398,99 @@ function drawTheory(){
 }
 document.querySelectorAll('[data-play]').forEach(b => b.onclick = () => playSeq(b.dataset.play.split(',').map(Number), 650));
 document.getElementById('playScale').onclick = () => playSeq(window._scaleNotes, 420);
+
+// ---------- 砌音階挑戰 ----------
+const qkb = document.getElementById('qkb'), qwhites = qkb.querySelector('.whites'), qwl = [];
+const WNAME = m => PC[m%12];
+for (let m=LOW; m<=HIGH; m++){
+  if (BOTH[m%12]) continue;
+  const d = document.createElement('div'); d.className='key white'; d.dataset.m=m;
+  d.innerHTML = `<div class="name">${PC[m%12]}</div>`; qwhites.appendChild(d); qwl.push(m);
+}
+function qPlace(){
+  qkb.querySelectorAll('.black').forEach(e=>e.remove());
+  const els = [...qwhites.children];
+  for (let m=LOW; m<HIGH; m++){
+    if (!BOTH[m%12]) continue;
+    const left = els[qwl.indexOf(m-1)], right = els[qwl.indexOf(m+1)];
+    const w = left.offsetWidth*0.62, x = (left.offsetLeft+left.offsetWidth + right.offsetLeft)/2 - w/2;
+    const b = document.createElement('div'); b.className='key black'; b.dataset.m=m;
+    b.style.left=(x+10)+'px'; b.style.width=w+'px'; b.style.top='10px';
+    b.innerHTML = `<div class="bname">${BOTH[m%12]}</div>`; qkb.appendChild(b);
+  }
+  qRender();
+}
+addEventListener('resize', () => { if (!document.getElementById('panelQz').hidden) qPlace(); });
+const STEPN = {1:'半音 S', 2:'全音 T'};
+const stepName = d => STEPN[d] || (d===0 ? '同一個音' : d<0 ? '向下行咗' : `${d} 個半音`);
+let qz = null, qScore = 0, qTotal = 0, qLast = null;
+function answerOf(k){ const t = LOW + NAT[k]; return MAJOR.map(i=>t+i).concat([t+12]); }
+function qSpell(m, i){
+  const ans = answerOf(qz.key);
+  if (i!==undefined && ans[i]===m) return scaleOf(qz.key).get(m%12).name;
+  return BOTH[m%12] ? BOTH[m%12].replace('<br>','/') : PC[m%12];
+}
+function qNew(){
+  let k; do { k = KEYS[Math.floor(Math.random()*KEYS.length)]; } while (k===qLast || (qLast===null && k==='C'));
+  qLast = k; qz = {key:k, seq:[LOW+NAT[k]], checked:false, counted:false};
+  document.getElementById('qKey').textContent = k + ' 大調'; document.getElementById('qTonic').textContent = k;
+  document.getElementById('qFb').innerHTML = '提示：跟住公式 <b>全 全 半　全 全 全 半</b>（T T S T T T S）一步步行。撳錯可以「↶ 刪一個」。';
+  qRender();
+}
+function qRender(){
+  const box = document.getElementById('qSlots'), ans = answerOf(qz.key), F = [2,2,1,2,2,2,1];
+  let h = '';
+  for (let i=0;i<8;i++){
+    if (i>0){
+      const need = F[i-1], s = qz.seq;
+      let got = '';
+      if (qz.checked && s[i]!==undefined){ const d = s[i]-s[i-1]; got = `<span class="got ${d===need?'ok':'bad'}">${d===1?'半':d===2?'全':'✗'}</span>`; }
+      h += `<div class="gapcol"><span class="need ${need===1?'h':''}">${need===1?'半':'全'}</span>${got}</div>`;
+    }
+    const m = qz.seq[i], cls = m===undefined ? '' : 'filled' + (qz.checked ? (m===ans[i] ? ' ok' : ' bad') : '');
+    h += `<div class="slotwrap"><div class="slot ${cls}">${m===undefined ? '' : qSpell(m, i)}</div><div class="slotlab">${SOL[i%7]}</div></div>`;
+  }
+  box.innerHTML = h;
+  qkb.querySelectorAll('.key').forEach(k => k.classList.toggle('ans', qz.checked && ans.includes(+k.dataset.m)));
+  document.getElementById('qUndo').disabled = qz.checked || qz.seq.length<=1;
+  document.getElementById('qCheck').disabled = qz.checked;
+  document.getElementById('qScore').textContent = qScore; document.getElementById('qTotal').textContent = qTotal;
+}
+function qPress(m){
+  if (qz.checked || qz.seq.length>=8) return;
+  qz.seq.push(m); qRender();
+  if (qz.seq.length===8) document.getElementById('qFb').innerHTML = '撳夠 8 個音喇！撳「對答案」。';
+}
+function qCheck(){
+  const fb = document.getElementById('qFb');
+  if (qz.seq.length<8){ fb.innerHTML = `仲差 <b>${8-qz.seq.length}</b> 個音，要撳夠 8 個（由 Do 去返高八度嘅 Do）。`; return; }
+  const ans = answerOf(qz.key), s = qz.seq, F = [2,2,1,2,2,2,1];
+  qz.checked = true;
+  const allOk = s.every((m,i) => m===ans[i]);
+  if (!qz.counted){ qTotal++; if (allOk) qScore++; qz.counted = true; }
+  const ansTxt = ans.map((m,i)=>scaleOf(qz.key).get(m%12).name).join('　');
+  const btns = `<br><button onclick="playSeq(answerOf(qz.key),420)">▶ 聽正確音階</button><button onclick="playSeq(qz.seq,420)">▶ 聽你砌嘅</button>`;
+  if (allOk){ fb.innerHTML = `✅ 全部啱！${qz.key} 大調：<span class="ans">${ansTxt}</span>` + btns; }
+  else {
+    // first wrong step, counted from the correct notes before it
+    let i = s.findIndex((m,j) => m!==ans[j]);
+    const prev = s[i-1], d = s[i]-prev, need = F[i-1];
+    const prevName = qSpell(prev, i-1), gotName = qSpell(s[i]), want = scaleOf(qz.key).get(ans[i]%12).name;
+    fb.innerHTML = `❌ 第 ${i} → 第 ${i+1} 個音出錯：公式要 <b>${stepName(need)}</b>，你由 ${prevName} 去 ${gotName} 係 <b>${stepName(d)}</b>。應該係 <b>${want}</b>。` +
+      (s.slice(i+1).some((m,j)=>m!==ans[i+1+j]) ? '（之後嘅音跟住錯咗都正常，由呢度改起。）' : '') +
+      `<br>正確答案：<span class="ans">${ansTxt}</span>` + btns;
+  }
+  qRender();
+}
+document.getElementById('qUndo').onclick = () => { if (!qz.checked && qz.seq.length>1){ qz.seq.pop(); qRender(); } };
+document.getElementById('qClear').onclick = () => { qz.seq = [LOW+NAT[qz.key]]; qz.checked = false; document.getElementById('qFb').innerHTML = '再試一次！（呢題已經計咗分，唔會重複計。）'; qRender(); };
+document.getElementById('qCheck').onclick = qCheck;
+document.getElementById('qNext').onclick = qNew;
+qkb.addEventListener('pointerdown', e => {
+  e.preventDefault(); const el = document.elementFromPoint(e.clientX,e.clientY); const k = el && el.closest('#qkb .key'); if (!k) return;
+  const m = +k.dataset.m; noteOn(m); setTimeout(() => noteOff(m), 450); qPress(m);
+});
+qNew();
 
 const gate = document.getElementById('gate');
 function hideGate(){ gate.hidden = true; initAudio(); }
